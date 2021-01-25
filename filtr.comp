@@ -1,0 +1,79 @@
+#version 450
+//#extension SPV_KHR_16bit_storage : enable
+#extension GL_EXT_shader_16bit_storage : enable
+#extension GL_AMD_gpu_shader_int16 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
+
+
+
+layout(binding = 0) buffer Src1
+{
+   uint32_t SrcDepth[ ];
+} ;
+
+
+
+layout(binding = 1) buffer Dst1
+{
+    uint32_t DstDepth[ ];
+	
+	
+};
+
+layout(binding = 2) buffer SrcTxt1
+{
+    u16vec4 SrcTxt[ ];
+	
+	
+};
+
+layout(binding = 3) buffer DstTxt1
+{
+     u16vec4 DstTxt[ ];
+	
+	
+};
+
+
+
+
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout (constant_id = 0) const uint BUFFER_ELEMENTS = 1000;
+
+void main() 
+{
+  
+  const 	uint SizeX  = gl_NumWorkGroups     .x;
+  const 	uint SizeY  = gl_NumWorkGroups     .y;
+			uint CoordX = gl_GlobalInvocationID.x;
+  const 	uint CoordY = gl_GlobalInvocationID.y;
+ 
+  uint Offset = CoordY * SizeX + CoordX;
+ 
+	DstDepth[Offset] = SrcDepth[Offset];
+	DstTxt[Offset] = SrcTxt[Offset];
+      if((	SrcDepth[Offset] - SrcDepth[Offset - 1])*(	SrcDepth[Offset] - SrcDepth[Offset - 1]) >
+			(SrcDepth[Offset - 1] - SrcDepth[Offset + 1])*(SrcDepth[Offset - 1] - SrcDepth[Offset + 1]) && DstDepth[Offset + 1] != 0)
+      {
+        SrcDepth[Offset] = SrcDepth[Offset + 1];
+		SrcTxt[Offset] = SrcTxt[Offset + 1];
+        DstDepth[Offset] = DstDepth[Offset + 1];
+		DstTxt[Offset] = DstTxt[Offset + 1];
+      }
+		
+
+      if((SrcDepth[Offset] - SrcDepth[Offset - SizeX])*(SrcDepth[Offset] - SrcDepth[Offset - SizeX]) > 
+	  (SrcDepth[Offset - SizeX] - SrcDepth[Offset + SizeX])*(SrcDepth[Offset - SizeX] - SrcDepth[Offset + SizeX]) && DstDepth[Offset + SizeX] != 0)
+      {
+        SrcDepth[Offset] = SrcDepth[Offset + SizeX];
+		SrcTxt[Offset] = SrcTxt[Offset + SizeX];
+        DstDepth[Offset] = DstDepth[Offset + SizeX];
+		DstTxt[Offset] = DstTxt[Offset + SizeX];
+      }
+
+	  
+	  
+		
+ }

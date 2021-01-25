@@ -1,0 +1,168 @@
+#version 450
+//#extension SPV_KHR_16bit_storage : enable
+#extension GL_EXT_shader_16bit_storage : enable
+#extension GL_AMD_gpu_shader_int16 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
+
+
+
+layout(binding = 0) uniform readonly UniformBuff
+{
+  float 	c_PIP1					;//=		UB.table[0];
+  float 	c_PIP2					;//=		UB.table[1];
+  float 	c_PIP3					;//=		UB.table[2]; 
+  float 	c_PIP4					;//=		UB.table[3];
+  float 	c_PIP5					;//=		UB.table[4];      
+  float 	c_PIP6					;//=		UB.table[5];      
+  float 	c_PIP7					;//=		UB.table[6];
+  float 	c_PIP8					;//=		UB.table[7];
+  float     c_PIP9					;//=		UB.table[8] ;
+  float	   	c_PIP10					;//=		UB.table[9];
+  float		c_PIP11					;//=		UB.table[10]; 
+  float	   	c_PIP12					;//=		UB.table[11];
+  float   	c_PIP13					;//=		UB.table[12];    
+  float		c_PIP14					;//=		UB.table[13];  
+  float	 	c_PIP15					;//=		UB.table[14];
+  float		c_PIP16					;//=		UB.table[15];
+  float     c_DstMinDepthValue2		;//=		UB.table[16]; 
+  float	    c_DstMaxDepthValue2		;//=		UB.table[17];
+  float	    c_DstZnear2				;//=		UB.table[18];
+  float	    c_DstZfar2				;//=		UB.table[19] ;
+  float     c_SrcMinDepthValue2		;//=		UB.table[20]; 
+  float	    c_SrcMaxDepthValue2		;//=		UB.table[21];
+  float	    c_SrcZnear2 			;//=		UB.table[22];
+  float	    c_SrcZfar2 				;//=		UB.table[23]; 
+  float    c_Width2test				;//=		UB.table[24];
+  float     c_Height2test 				;//=		UB.table[25];      
+  float	   	c_BitDepth2 			;//=		UB.table[26];
+  float	   	zero 					;//=		UB.table[27]; 
+  float		SrcDepthStride			;
+  float     DstDepthStride			;
+} ;
+
+int c_Width2 = int(c_Width2test);
+int c_Height2 = int(c_Height2test);
+int DstStride= int(DstDepthStride);
+//uint16_t SrcDepthPtr[1920*1080];
+
+layout(binding = 1) buffer Src
+{
+    uint32_t SrcDepth[ ];
+	
+	
+};
+
+layout(binding = 2) buffer Dst
+{
+  uint32_t DstDepth[ ];
+};
+
+layout(binding = 3) buffer SrcT
+{
+     u16vec4 SrcTxt[ ];
+	
+	
+};
+
+layout(binding = 4) buffer DstT
+{
+   u16vec4 DstTextPtr[ ];
+};
+
+
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout (constant_id = 0) const uint BUFFER_ELEMENTS = 1000;
+
+void main() 
+{
+  
+  const 	uint SizeX  = gl_NumWorkGroups     .x;
+  const 	uint SizeY  = gl_NumWorkGroups     .y;
+  	 	uint CoordX = gl_GlobalInvocationID.x;
+  const 	uint CoordY = gl_GlobalInvocationID.y;
+ 
+  uint Offset = CoordY * SizeX + CoordX;
+  
+  int   SrcI32 = int(SrcDepth[Offset]);
+  float SrcF   = float(SrcI32);
+  float DstF   = SrcF;
+  int   DstI32 = int(DstF);
+  
+
+  //const uint    SrcDepthPtr[1920*1080]; //= 1920*CoordY+CoordX;
+  
+  
+	//const int      SrcDepthStride = 1920;
+	uint DstDepthPtr[1920*1080];   
+	//const int      DstDepthStride = 1920;
+
+	
+ 
+      int CurrDepth = SrcI32;
+
+    //normalize depth to (0.0-1.0) range
+      
+		
+		double NormalizedDepth = (CurrDepth - c_SrcMinDepthValue2)/(c_SrcMaxDepthValue2 - c_SrcMinDepthValue2);
+      
+	  
+	//convert normalized depth to InvZ
+      
+	  
+		double InvZ = NormalizedDepth * (1.0/c_SrcZnear2 -  1.0/c_SrcZfar2) + (1.0/c_SrcZfar2);
+      
+	  
+	//do reprojection
+      
+	  
+		double Row0 = CoordX * c_PIP1 + CoordY * c_PIP2 + c_PIP3 + InvZ * c_PIP4;
+		double Row1 = CoordX * c_PIP5 + CoordY * c_PIP6 + c_PIP7 + InvZ * c_PIP8;
+		double Row2 = CoordX * c_PIP9 + CoordY * c_PIP10 + c_PIP11 + InvZ * c_PIP12;
+
+	
+		int  TargetX    = int((Row0/Row2) * 1+ double(0.5)); 
+		int  TargetY    = int((Row1 / Row2) * 1 + double(0.5));
+		double TargetInvZ = InvZ / Row2;
+	
+
+    //check if target coordinate is within image area
+	  
+	  
+		if(TargetX < 0 || TargetX >= SizeX || TargetY < 0 || TargetY >= SizeY) {  
+		}
+		else{
+		
+      
+	  
+    //convert InvZ to normalized depth 
+	  
+	  
+		double TargetNormalizedDepth = (InvZ - (1.0/ c_DstZfar2)) * (1.0/((1.0/c_DstZnear2)-(1.0/c_DstZfar2)));
+     
+
+	//denormalize depth
+	  
+      
+		uint32_t TargetDepth = uint32_t(TargetNormalizedDepth * (c_DstMaxDepthValue2 - c_DstMinDepthValue2) + c_DstMinDepthValue2);
+
+    //chose closesst object
+     
+	  
+		 uint32_t  TargetIdx = TargetY * DstStride + TargetX;
+		
+		
+		atomicMax(DstDepth[TargetIdx], TargetDepth);
+		
+		
+		 if(DstDepth[TargetIdx] <= TargetDepth)
+			{
+			 DstTextPtr[TargetIdx] = SrcTxt[Offset];
+			}
+		
+		if(CoordY == 1080)
+			CurrDepth +=  1080;
+			
+			}
+}

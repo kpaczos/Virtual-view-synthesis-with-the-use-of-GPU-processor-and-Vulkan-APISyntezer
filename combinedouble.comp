@@ -1,0 +1,90 @@
+#version 450
+//#extension SPV_KHR_16bit_storage : enable
+#extension GL_EXT_shader_16bit_storage : enable
+#extension GL_AMD_gpu_shader_int16 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
+
+
+
+layout(binding = 0) buffer SrcDepthA
+{
+   uint32_t DepthA[ ];
+} ;
+
+
+layout(binding = 1) buffer SrcDepthB
+{
+  uint32_t DepthB[ ];
+};
+
+
+layout(binding = 2) buffer DstDe
+{
+  uint32_t DstDepth[ ];
+};
+layout(binding = 3) buffer SrcTxtA
+{
+  u16vec4 TxtA[ ];
+};
+
+layout(binding = 4) buffer SrcTxtB
+{
+   u16vec4 TxtB[ ];
+};
+
+layout(binding = 5) buffer DstTextur
+{
+   u16vec4 DstText[ ];
+};
+
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout (constant_id = 0) const uint BUFFER_ELEMENTS = 1000;
+
+void main() 
+{
+  const 	uint SizeX  = gl_NumWorkGroups     .x;
+  const 	uint SizeY  = gl_NumWorkGroups     .y;
+			uint CoordX = gl_GlobalInvocationID.x;
+  const 	uint CoordY = gl_GlobalInvocationID.y;
+  uint32_t tmp = 0;
+  uint Offset = CoordY * SizeX + CoordX;
+  
+	atomicMax(DstDepth[Offset ], DepthA[Offset]);
+	atomicMax(DstDepth[Offset], DepthB[Offset]);
+	
+	
+	tmp = DepthA[Offset] - DepthB[Offset];
+	
+	if (tmp < 0){ 
+	
+		tmp = -1*tmp;
+		
+        }
+		
+	if(tmp < 512){
+	
+		DstText[Offset] = (TxtA[Offset] + TxtB[Offset]) >> 1;
+
+		}
+		
+else{		
+	
+	
+  if(DepthA[Offset]<=DepthB[Offset]){
+	  DstText[Offset]=TxtB[Offset];
+  }
+  else{
+	  DstText[Offset]=TxtA[Offset];
+  }
+ 
+}
+}
+  
+  
+  
+  
+  
+  
+ 

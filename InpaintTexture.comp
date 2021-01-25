@@ -1,0 +1,152 @@
+#version 450
+//#extension SPV_KHR_16bit_storage : enable
+#extension GL_EXT_shader_16bit_storage : enable
+#extension GL_AMD_gpu_shader_int16 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
+
+
+layout(binding = 0) buffer SrcInPntL
+{
+   int32_t InPntL[ ];
+};
+layout(binding = 1) buffer SrcInPntR
+{
+   int32_t InPntR[ ];
+};
+layout(binding = 2) buffer SrcInPntA
+{
+   int32_t InPntA[ ];
+} ;
+
+layout(binding = 3) buffer SrcInPntB
+{
+  int32_t InPntB[ ];
+};
+
+layout(binding = 4) buffer SrcDepth
+{
+  uint32_t SrcD[ ];
+};
+
+layout(binding = 5) buffer SrcTxt
+{
+  u16vec4 SrcT[ ];
+};
+
+layout(binding = 6) buffer DstTxt
+{
+   u16vec4 DstT[ ];
+};
+
+
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout (constant_id = 0) const uint BUFFER_ELEMENTS = 1000;
+
+void main() 
+{
+  const     uint SizeX  = gl_NumWorkGroups     .x;
+  const     uint SizeY  = gl_NumWorkGroups     .y;
+            uint CoordX = gl_GlobalInvocationID.x;
+  const     uint CoordY = gl_GlobalInvocationID.y;
+
+    uint Offset = CoordY * SizeX + CoordX;
+
+	
+	
+ int32_t MinDist;
+ int32_t MinIndx;
+
+	
+
+   if(SrcD[Offset] == 0){
+
+         MinDist = 2147483647;
+         MinIndx = -1;
+		 
+		 
+		 if (InPntB[Offset] != -1)
+      {
+        int32_t Offset2  = int32_t(InPntB[Offset]);
+        int32_t SrcIndx = int32_t(Offset + Offset2 * SizeX);
+        int32_t SrcDist = int32_t(Offset2 * (SrcD[SrcIndx] + 1));
+        if (SrcDist < MinDist)
+        {
+          MinIndx = SrcIndx;
+          MinDist = SrcDist;
+        }
+      }
+	  /*
+
+
+  if (InPntA[Offset] != -1)
+      {
+        int32_t Offset2  = int32_t(CoordY - InPntA[Offset]);
+        int32_t SrcIndx = int32_t(Offset - Offset2);
+        int32_t SrcDist = int32_t(Offset2 * (SrcD[SrcIndx] + 1));
+        if (SrcDist < MinDist)
+        {
+          MinIndx = SrcIndx;
+          MinDist = SrcDist;
+        }
+      }
+	  
+    if(InPntL[Offset] != -1){
+
+    int32_t Offset2  = InPntL[Offset];
+    int32_t SrcIndx = int32_t(Offset - Offset2);
+    int32_t SrcDist = int32_t(Offset2 * (SrcD[SrcIndx] + 1));
+
+     if (SrcDist < MinDist)
+        {
+          MinIndx = int32_t(SrcIndx);
+          MinDist = int32_t(SrcDist);
+        }
+   }
+  
+  
+   
+	  
+	  if (InPntR[Offset] != -1)
+      {
+        int32_t Offset2  = int32_t(InPntR[Offset]);
+        int32_t SrcIndx = int32_t(Offset + Offset2);
+        int32_t SrcDist = int32_t(Offset2 * (SrcD[SrcIndx] + 1));
+        if (SrcDist < MinDist)
+        {
+          MinIndx = SrcIndx;
+          MinDist = SrcDist;
+        }
+      }
+	  
+	  
+	   */
+	  
+	  
+	 
+	  
+   }
+
+
+
+   //wypelnienie
+    if (MinIndx < 0 || MinIndx > 1920*1080){
+
+	//DstT[Offset] = SrcT[Offset];
+	
+    }
+
+      else{
+    DstT[Offset] = SrcT[MinIndx];
+	
+	
+      }
+	if(SrcD[Offset]!= 0){
+	DstT[Offset] = SrcT[Offset];
+	}
+	
+
+
+
+}
